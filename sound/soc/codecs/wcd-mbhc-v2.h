@@ -249,8 +249,6 @@ struct wcd_mbhc_config {
 	bool mono_stero_detection;
 	bool (*swap_gnd_mic)(struct snd_soc_codec *codec);
 	bool hs_ext_micbias;
-        //ChrisYKLu add for FTM
-        bool fih_hs_support;
 	bool gnd_det_en;
 	int key_code[WCD_MBHC_KEYCODE_NUM];
 	uint32_t linein_th;
@@ -529,3 +527,5 @@ static inline void wcd_mbhc_deinit(struct wcd_mbhc *mbhc)
 #endif
 
 #endif /* __WCD_MBHC_V2_H__ */
+extern void msm8x16_wcd_codec_set_headset_state(u32 state);
+extern int msm8x16_wcd_codec_get_headset_state(void);

@@ -513,7 +513,6 @@ static int android_enable(struct android_dev *dev)
 			err = usb_add_config(cdev, &conf->usb_config,
 						android_bind_config);
 			if (err < 0) {
-				printk("BBox::UEC;3::2\n"); //   add bbs log
 				pr_err("%s: usb_add_config failed : err: %d\n",
 						__func__, err);
 				return err;
@@ -2851,8 +2850,6 @@ static int mass_storage_function_init(struct android_usb_function *f,
 	}
 
 	fsg_mod_data.removable[0] = true;
-	fsg_mod_data.cdrom[0] = true;//,add for CD-ROM
-  fsg_mod_data.ro[0] = true;//,add for CD-ROM
 	fsg_config_from_params(&m_config, &fsg_mod_data, fsg_num_buffers);
 	fsg_opts = fsg_opts_from_func_inst(config->f_ms_inst);
 	ret = fsg_common_set_num_buffers(fsg_opts->common, fsg_num_buffers);
@@ -2926,7 +2923,6 @@ static int mass_storage_function_bind_config(struct android_usb_function *f,
 {
 	struct mass_storage_function_config *config = f->config;
 	int ret = 0;
-	int i;
 	struct fsg_opts *fsg_opts;
 
 	config->f_ms = usb_get_function(config->f_ms_inst);
@@ -2937,7 +2933,7 @@ static int mass_storage_function_bind_config(struct android_usb_function *f,
 
 	ret = usb_add_function(c, config->f_ms);
 	if (ret) {
-		pr_err("Could not bind ms%u config\n", i);
+		pr_err("Could not bind ms config\n");
 		goto err_usb_add_function;
 	}
 
@@ -3788,7 +3784,6 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 			msleep(100);
 		err = android_enable(dev);
 		if (err < 0) {
-			printk("BBox::UEC;3::0\n"); //   add for bbs log
 			pr_err("%s: android_enable failed\n", __func__);
 			dev->connected = 0;
 			dev->enabled = true;
@@ -4581,8 +4576,3 @@ static void __exit cleanup(void)
 	platform_driver_unregister(&android_platform_driver);
 }
 module_exit(cleanup);
-int android_usb_product_id(void)
-{
-       return device_desc.idProduct;
-}
-EXPORT_SYMBOL(android_usb_product_id);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2017,2019 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -30,8 +30,6 @@
 #include "mdss_smmu.h"
 #include "mdss_dsi_phy.h"
 
-#include "../../../fih/fih_lcm.h"	//Display-AckErrCountAndStatus-00+_20161014
-
 #define VSYNC_PERIOD 17
 #define DMA_TX_TIMEOUT 200
 #define DMA_TPG_FIFO_LEN 64
@@ -42,13 +40,6 @@
 #define MDSS_DSI_INT_CTRL	0x0110
 
 #define CEIL(x, y)		(((x) + ((y) - 1)) / (y))
-
-//Display-BBox-01*{_20160804
-//Display-BBox-00+{_20150610
-/* Black Box */
-#define BBOX_LCM_MIPI_FAIL do {printk("BBox;%s: LCM MIPI fail\n", __func__); printk("BBox::UEC;0::0\n");} while (0);
-//Display-BBox-00+}_20150610
-//Display-BBox-01*}_20160804
 
 struct mdss_dsi_ctrl_pdata *ctrl_list[DSI_CTRL_MAX];
 
@@ -1542,6 +1533,7 @@ static int mdss_dsi_cmd_dma_tpg_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 	int len, i, ret = 0, data = 0;
 	u32 *bp;
 	struct mdss_dsi_ctrl_pdata *mctrl = NULL;
+	int ignored = 0;        /* overflow ignored */
 
 	if (tp->len > DMA_TPG_FIFO_LEN) {
 		pr_debug("command length more than FIFO length\n");
@@ -1557,9 +1549,22 @@ static int mdss_dsi_cmd_dma_tpg_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 	len = ALIGN(tp->len, 4);
 
 	reinit_completion(&ctrl->dma_comp);
+	if (ctrl->panel_mode == DSI_VIDEO_MODE)
+		ignored = 1;
 
-	if (mdss_dsi_sync_wait_trigger(ctrl))
+	if (mdss_dsi_sync_wait_trigger(ctrl)) {
 		mctrl = mdss_dsi_get_other_ctrl(ctrl);
+			if ((mctrl) && (ignored == 1)) {
+				/* mask out overflow isr */
+				mdss_dsi_set_reg(mctrl, 0x10c,
+					 0x0f0000, 0x0f0000);
+			}
+	}
+
+	if (ignored) {
+		/* mask out overflow isr */
+		mdss_dsi_set_reg(ctrl, 0x10c, 0x0f0000, 0x0f0000);
+	}
 
 	data = BIT(16) | BIT(17);	/* select CMD_DMA_PATTERN_SEL to 3 */
 	data |= BIT(2);			/* select CMD_DMA_FIFO_MODE to 1 */
@@ -1608,14 +1613,7 @@ static int mdss_dsi_cmd_dma_tpg_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 	ret = wait_for_completion_timeout(&ctrl->dma_comp,
 				msecs_to_jiffies(DMA_TX_TIMEOUT));
 	if (ret == 0)
-	//Display-BBox-01*{_20160804
-	//Display-BBox-00*{_20150610
-	{
-		BBOX_LCM_MIPI_FAIL
 		ret = -ETIMEDOUT;
-	}
-	//Display-BBox-00*}_20150610
-	//Display-BBox-01*}_20160804
 	else
 		ret = tp->len;
 
@@ -1627,6 +1625,13 @@ static int mdss_dsi_cmd_dma_tpg_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 	/* Disable CMD_DMA_TPG */
 	MIPI_OUTP(ctrl->ctrl_base + 0x15c, 0x0);
 
+	if (ignored) {
+		/* clear pending overflow status */
+		mdss_dsi_set_reg(ctrl, 0xc, 0xffffffff, 0x44440000);
+		/* restore overflow isr */
+		mdss_dsi_set_reg(ctrl, 0x10c, 0x0f0000, 0);
+	}
+
 	if (mctrl) {
 		/* Reset the DMA TPG FIFO */
 		MIPI_OUTP(mctrl->ctrl_base + 0x1ec, 0x1);
@@ -1635,8 +1640,13 @@ static int mdss_dsi_cmd_dma_tpg_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 		wmb(); /* make sure FIFO reset happens */
 		/* Disable CMD_DMA_TPG */
 		MIPI_OUTP(mctrl->ctrl_base + 0x15c, 0x0);
+		if (ignored) {
+			/* clear pending overflow status */
+			mdss_dsi_set_reg(mctrl, 0xc, 0xffffffff, 0x44440000);
+			/* restore overflow isr */
+			mdss_dsi_set_reg(mctrl, 0x10c, 0x0f0000, 0);
+		}
 	}
-
 	return ret;
 }
 
@@ -1672,9 +1682,6 @@ static int mdss_dsi_cmds2buf_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 				len = mdss_dsi_cmd_dma_tpg_tx(ctrl, tp);
 			else
 				len = mdss_dsi_cmd_dma_tx(ctrl, tp);
-
-			pr_debug("\n\n******************** [HL] %s, dchdr->wait = 0x%x, cm->payload[0] = 0x%x, cm->payload[1] = 0x%x, cm->payload[2] = 0x%x  **********************\n\n", __func__, dchdr->wait, cm->payload[0], cm->payload[1], cm->payload[2]);
-
 			if (IS_ERR_VALUE(len)) {
 				mdss_dsi_disable_irq(ctrl, DSI_CMD_TERM);
 				pr_err("%s: failed to call cmd_dma_tx for cmd = 0x%x\n",
@@ -2123,7 +2130,7 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 			/* clear CMD DMA and BTA_DONE isr only */
 			reg_val |= (DSI_INTR_CMD_DMA_DONE | DSI_INTR_BTA_DONE);
 			MIPI_OUTP(ctrl->ctrl_base + 0x0110, reg_val);
-			mdss_dsi_disable_irq(ctrl, DSI_CMD_TERM);
+			mdss_dsi_disable_irq_nosync(ctrl, DSI_CMD_TERM);
 			complete(&ctrl->dma_comp);
 
 			pr_warn("%s: dma tx done but irq not triggered\n",
@@ -2953,9 +2960,6 @@ bool mdss_dsi_ack_err_status(struct mdss_dsi_ctrl_pdata *ctrl)
 	u32 status;
 	unsigned char *base;
 	bool ret = false;
-	static char page_cnt[32] = {0};
-	static char page_status[32] ={0};	//Display-AckErrCountAndStatus-00+_20161014
-
 
 	base = ctrl->ctrl_base;
 
@@ -2976,18 +2980,6 @@ bool mdss_dsi_ack_err_status(struct mdss_dsi_ctrl_pdata *ctrl)
 			return false;
 
 		pr_err("%s: status=%x\n", __func__, status);
-
-		//Display-AckErrCountAndStatus-00+{_20161014
-		/*<<EricHsieh, AwER*/
-		ctrl->err_cont.dsi_ack_err_cnt++;
-		ctrl->err_cont.dsi_ack_err_status = status;
-		sprintf(page_cnt, "0x%x\n",ctrl->err_cont.dsi_ack_err_cnt);
-		sprintf(page_status, "0x%x\n",ctrl->err_cont.dsi_ack_err_status);
-		fih_awer_cnt_set(page_cnt);
-		fih_awer_status_set(page_status);
-		/*>>EricHsieh, AwER*/
-		//Display-AckErrCountAndStatus-00+}_20161014
-
 		ret = true;
 	}
 
@@ -3050,10 +3042,7 @@ static bool mdss_dsi_fifo_status(struct mdss_dsi_ctrl_pdata *ctrl)
 	if (status & 0xcccc4409) {
 		MIPI_OUTP(base + 0x000c, status);
 
-		//Display-AvoidConsoleCrashBecauseOfPrntingTooManyErrorMsgs-00*{_20150427
-		if (printk_ratelimit())
-			pr_err("%s: status=%x\n", __func__, status);
-		//Display-AvoidConsoleCrashBecauseOfPrntingTooManyErrorMsgs-00*}_20150427
+		pr_err("%s: status=%x\n", __func__, status);
 
 		/*
 		 * if DSI FIFO overflow is masked,
@@ -3090,10 +3079,7 @@ static bool mdss_dsi_status(struct mdss_dsi_ctrl_pdata *ctrl)
 
 	if (status & 0x80000000) { /* INTERLEAVE_OP_CONTENTION */
 		MIPI_OUTP(base + 0x0008, status);
-		//Display-AvoidConsoleCrashBecauseOfPrntingTooManyErrorMsgs-00*{_20150427
-		if (printk_ratelimit())
-			pr_err("%s: status=%x\n", __func__, status);
-		//Display-AvoidConsoleCrashBecauseOfPrntingTooManyErrorMsgs-00*}_20150427
+		pr_err("%s: status=%x\n", __func__, status);
 		ret = true;
 	}
 
@@ -3140,11 +3126,8 @@ static void __dsi_error_counter(struct dsi_err_container *err_container)
 
 	if (prev_time &&
 		((curr_time - prev_time) < err_container->err_time_delta)) {
-		//Display-AvoidConsoleCrashBecauseOfPrntingTooManyErrorMsgs-00*}_20150427
-		if (printk_ratelimit())
-			pr_err("%s: panic in WQ as dsi error intrs within:%dms\n",
-					__func__, err_container->err_time_delta);
-		//Display-AvoidConsoleCrashBecauseOfPrntingTooManyErrorMsgs-00*}_20150427
+		pr_err("%s: panic in WQ as dsi error intrs within:%dms\n",
+				__func__, err_container->err_time_delta);
 		MDSS_XLOG_TOUT_HANDLER_WQ("mdp", "dsi0_ctrl", "dsi0_phy",
 			"dsi1_ctrl", "dsi1_phy");
 	}

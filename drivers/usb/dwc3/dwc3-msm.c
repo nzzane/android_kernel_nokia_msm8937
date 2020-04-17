@@ -2362,7 +2362,9 @@ static void dwc3_ext_event_notify(struct dwc3_msm *mdwc)
 		return;
 	}
 
-	pm_stay_awake(mdwc->dev);
+	if (mdwc->no_wakeup_src_in_hostmode && mdwc->in_host_mode)
+		pm_stay_awake(mdwc->dev);
+
 	queue_delayed_work(mdwc->sm_usb_wq, &mdwc->sm_work, 0);
 }
 
@@ -2942,6 +2944,15 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	if (!mdwc)
 		return -ENOMEM;
 
+	if (of_get_property(pdev->dev.of_node, "qcom,usb-dbm", NULL)) {
+		mdwc->dbm = usb_get_dbm_by_phandle(&pdev->dev, "qcom,usb-dbm");
+		if (IS_ERR(mdwc->dbm)) {
+			dev_err(&pdev->dev, "unable to get dbm device\n");
+			ret = -EPROBE_DEFER;
+			goto err_dbm;
+		}
+	}
+
 	mdwc->curr_mode = DWC3_PERF_INVALID;
 
 	if (dma_set_mask_and_coherent(dev, DMA_BIT_MASK(64))) {
@@ -2982,7 +2993,6 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 
 	mdwc->id_state = DWC3_ID_FLOAT;
 	set_bit(ID, &mdwc->inputs);
-
 	mdwc->charging_disabled = of_property_read_bool(node,
 				"qcom,charging-disabled");
 
@@ -3144,13 +3154,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		}
 	}
 
-	if (of_get_property(pdev->dev.of_node, "qcom,usb-dbm", NULL)) {
-		mdwc->dbm = usb_get_dbm_by_phandle(&pdev->dev, "qcom,usb-dbm");
-		if (IS_ERR(mdwc->dbm)) {
-			dev_err(&pdev->dev, "unable to get dbm device\n");
-			ret = -EPROBE_DEFER;
-			goto err;
-		}
+	if (mdwc->dbm) {
 		/*
 		 * Add power event if the dbm indicates coming out of L1
 		 * by interrupt
@@ -3342,6 +3346,9 @@ put_psupply:
 	if (mdwc->usb_psy.dev)
 		power_supply_unregister(&mdwc->usb_psy);
 err:
+	return ret;
+err_dbm:
+	devm_kfree(&pdev->dev, mdwc);
 	return ret;
 }
 
@@ -4255,36 +4262,21 @@ static int dwc3_msm_pm_prepare(struct device *dev)
 	return 0;
 }
 
-#ifdef CONFIG_FIH_MT_SLEEP
-int get_sleep_current_mode(void);
-#endif
 #ifdef CONFIG_PM_SLEEP
 static int dwc3_msm_pm_suspend(struct device *dev)
 {
 	int ret = 0;
 	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
 	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
-#ifdef CONFIG_FIH_MT_SLEEP
-	int sc = get_sleep_current_mode();
-#endif
 
 	dev_dbg(dev, "dwc3-msm PM suspend\n");
 	dbg_event(0xFF, "PM Sus", 0);
 
 	flush_workqueue(mdwc->dwc3_resume_wq);
-#ifdef CONFIG_FIH_MT_SLEEP
-	if (!atomic_read(&dwc->in_lpm) && !mdwc->no_wakeup_src_in_hostmode && !sc) {
-#else
 	if (!atomic_read(&dwc->in_lpm) && !mdwc->no_wakeup_src_in_hostmode) {
-#endif
 		dev_err(mdwc->dev, "Abort PM suspend!! (USB is outside LPM)\n");
 		return -EBUSY;
 	}
-#ifdef CONFIG_FIH_MT_SLEEP
-	if (sc) {
-		mdwc->resume_pending = true;
-	}
-#endif
 
 	ret = dwc3_msm_suspend(mdwc);
 	if (!ret)

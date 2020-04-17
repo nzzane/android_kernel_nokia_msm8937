@@ -31,7 +31,6 @@
 #include <media/radio-iris.h>
 #include <linux/wakelock.h>
 #include <linux/uaccess.h>
-#include <linux/delay.h> /* 20150602 add for fm radio retry*/
 
 struct radio_data {
 	struct radio_hci_dev *hdev;
@@ -167,7 +166,6 @@ static int radio_hci_smd_register_dev(struct radio_data *hsmd)
 {
 	struct radio_hci_dev *hdev;
 	int rc;
-	int rty_count=0; /* 20150602 add for fm radio retry*/
 	FMDBG("hsmd: %pK", hsmd);
 
 	if (hsmd == NULL)
@@ -184,18 +182,9 @@ static int radio_hci_smd_register_dev(struct radio_data *hsmd)
 	hdev->close_smd = radio_hci_smd_exit;
 
 	/* Open the SMD Channel and device and register the callback function */
-	//rc = smd_named_open_on_edge("APPS_FM", SMD_APPS_WCNSS,
-		//&hsmd->fm_channel, hdev, radio_hci_smd_notify_cmd);
-
-/*20140213  added for FM self calibration test begin */
-	do{
-		rc = smd_named_open_on_edge("APPS_FM", SMD_APPS_WCNSS,
+	rc = smd_named_open_on_edge("APPS_FM", SMD_APPS_WCNSS,
 		&hsmd->fm_channel, hdev, radio_hci_smd_notify_cmd);
-		FMDERR("FM check SMD channel ready=%d,rty_count=%d\n",rc,rty_count);
-		msleep(100);
-		rty_count++;
-	}while(rc<0 && rty_count<50);
-/*20140213  added for FM self calibration test end */
+
 	if (rc < 0) {
 		FMDERR("Cannot open the command channel");
 		hsmd->hdev = NULL;

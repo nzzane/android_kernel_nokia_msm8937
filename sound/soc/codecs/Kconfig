@@ -42,6 +42,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_AK5386
 	select SND_SOC_ALC5623 if I2C
 	select SND_SOC_ALC5632 if I2C
+	select SND_SOC_AW87319 if I2C
 	select SND_SOC_CQ0093VC if MFD_DAVINCI_VOICECODEC
 	select SND_SOC_CS35L32 if I2C
 	select SND_SOC_CS42L51_I2C if I2C
@@ -324,6 +325,10 @@ config SND_SOC_ALC5623
 
 config SND_SOC_ALC5632
 	tristate
+
+config SND_SOC_AW87319
+	tristate "Awinic class K PA chip"
+	depends on I2C
 
 config SND_SOC_CQ0093VC
 	tristate
@@ -632,6 +637,10 @@ config SND_SOC_WCD9330
 config SND_SOC_WCD9335
         tristate
 
+config SND_SOC_BG_CODEC
+	tristate
+	default m if MSM_BG_GLINK=y
+
 config SND_SOC_WSA881X_SENSORS
 	tristate
 
@@ -647,6 +656,10 @@ config SND_SOC_WSA881X_ANALOG
 
 config SND_SOC_MSM8X16_WCD
 	tristate
+
+config SND_SOC_DIGITAL_CDC
+	tristate
+	select REGMAP_MMIO
 
 config SND_SOC_WCD9XXX
 	tristate

@@ -760,8 +760,7 @@ static void tx_complete(struct usb_ep *ep, struct usb_request *req)
 		dev->tx_aggr_cnt[n-1]++;
 
 		/* sg_ctx is only accessible here, can use lock-free version */
-		while ((skb = __skb_dequeue(&sg_ctx->skbs)) != NULL)
-			dev_kfree_skb_any(skb);
+		__skb_queue_purge(&sg_ctx->skbs);
 	}
 
 	dev->net->stats.tx_packets += n;
@@ -1077,8 +1076,8 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 	struct usb_ep		*in = NULL;
 	u16			cdc_filter = 0;
 	bool			multi_pkt_xfer = false;
-	u32			fixed_in_len;
-	bool			is_fixed;
+	u32			fixed_in_len = 0;
+	bool			is_fixed = false;
 	struct skb_shared_hwtstamps hwtstamps;
 
 	spin_lock_irqsave(&dev->lock, flags);
@@ -1942,7 +1941,7 @@ int gether_get_host_addr_cdc(struct net_device *net, char *host_addr, int len)
 		return -EINVAL;
 
 	dev = netdev_priv(net);
-	snprintf(host_addr, len, "%pM", dev->host_mac);
+	snprintf(host_addr, len, "%pm", dev->host_mac);
 
 	return strlen(host_addr);
 }

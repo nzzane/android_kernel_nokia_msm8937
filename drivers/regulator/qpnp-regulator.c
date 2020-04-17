@@ -41,10 +41,6 @@ enum {
 	QPNP_VREG_DEBUG_OCP		= BIT(5), /* Show VS OCP IRQ events */
 };
 
-#define BBOX_REGULATOR_PROBE_FAIL do {printk("BBox;%s: Probe fail\n", __func__); printk("BBox::UEC;17::0\n");} while (0)
-#define REGULATOR_READ_ERROR(rc)	do {printk("BBox;%s: read error:%d\n", __func__, rc); printk("BBox::UEC;17::1\n");} while (0)
-#define REGULATOR_WRITE_ERROR(rc)	do {printk("BBox;%s: write error:%d\n", __func__, rc); printk("BBox::UEC;17::2\n");} while (0)
-
 static int qpnp_vreg_debug_mask;
 module_param_named(
 	debug_mask, qpnp_vreg_debug_mask, int, S_IRUSR | S_IWUSR
@@ -551,11 +547,7 @@ static inline int qpnp_vreg_read(struct qpnp_regulator *vreg, u16 addr, u8 *buf,
 			vreg->rdesc.name, vreg->base_addr + addr,
 			vreg->spmi_dev->sid, len, str);
 	}
-// FITHDC,  add for BBS log {{
-	if (rc) {
-		REGULATOR_READ_ERROR(rc);
-	}
-// FITHDC,  add for BBS log }}
+
 	return rc;
 }
 
@@ -577,11 +569,7 @@ static inline int qpnp_vreg_write(struct qpnp_regulator *vreg, u16 addr,
 		vreg->spmi_dev->sid, vreg->base_addr + addr, buf, len);
 	if (!rc)
 		vreg->write_count += len;
-// FITHDC,  add for BBS log {{
-	if (rc) {
-		REGULATOR_WRITE_ERROR(rc);
-	}
-// FITHDC,  add for BBS log }}
+
 	return rc;
 }
 
@@ -937,6 +925,7 @@ static int qpnp_regulator_common_set_voltage(struct regulator_dev *rdev,
 
 		qpnp_vreg_show_state(rdev, QPNP_REGULATOR_ACTION_VOLTAGE);
 	}
+
 	return rc;
 }
 
@@ -2192,7 +2181,6 @@ static int qpnp_regulator_probe(struct spmi_device *spmi)
 	if (!vreg) {
 		dev_err(&spmi->dev, "%s: Can't allocate qpnp_regulator\n",
 			__func__);
-		BBOX_REGULATOR_PROBE_FAIL;
 		return -ENOMEM;
 	}
 
@@ -2206,7 +2194,6 @@ static int qpnp_regulator_probe(struct spmi_device *spmi)
 			dev_err(&spmi->dev, "%s: unable to allocate memory\n",
 					__func__);
 			kfree(vreg);
-			BBOX_REGULATOR_PROBE_FAIL;
 			return -ENOMEM;
 		}
 		memset(&of_pdata, 0,
@@ -2222,7 +2209,6 @@ static int qpnp_regulator_probe(struct spmi_device *spmi)
 			dev_err(&spmi->dev, "%s: DT parsing failed, rc=%d\n",
 					__func__, rc);
 			kfree(vreg);
-			BBOX_REGULATOR_PROBE_FAIL;
 			return -ENOMEM;
 		}
 
@@ -2235,7 +2221,6 @@ static int qpnp_regulator_probe(struct spmi_device *spmi)
 		dev_err(&spmi->dev, "%s: no platform data specified\n",
 			__func__);
 		kfree(vreg);
-		BBOX_REGULATOR_PROBE_FAIL;
 		return -EINVAL;
 	}
 
@@ -2266,7 +2251,6 @@ static int qpnp_regulator_probe(struct spmi_device *spmi)
 		dev_err(&spmi->dev, "%s: Can't allocate regulator name\n",
 			__func__);
 		kfree(vreg);
-		BBOX_REGULATOR_PROBE_FAIL;
 		return -ENOMEM;
 	}
 	strlcpy(reg_name, pdata->init_data.constraints.name,
@@ -2349,7 +2333,6 @@ bail:
 	kfree(vreg->rdesc.name);
 	kfree(vreg);
 
-	BBOX_REGULATOR_PROBE_FAIL;
 	return rc;
 }
 
