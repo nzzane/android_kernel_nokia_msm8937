@@ -235,6 +235,34 @@ ktime_t alarm_expires_remaining(const struct alarm *alarm)
 }
 EXPORT_SYMBOL_GPL(alarm_expires_remaining);
 
+//@20150529,  add FAO-12 Clear alarm Time Queue
+void alarmTimeQueueDelFtm(void)
+{
+	int i=0;
+	unsigned long flags;
+
+	pr_info("func:%s Enter.\n",__func__);
+	for (i = 0; i < ALARM_NUMTYPE; i++)
+	{
+        	struct alarm_base *base = &alarm_bases[i];
+                struct timerqueue_node *next;
+
+                spin_lock_irqsave(&base->lock, flags);
+                next = timerqueue_getnext(&base->timerqueue);
+
+                spin_unlock_irqrestore(&base->lock, flags);
+                if (!next)
+                        continue;
+                spin_lock_irqsave(&base->lock, flags);
+
+				timerqueue_del(&base->timerqueue, next);
+				pr_info("timerqueue_del i=%d\n",i);
+                spin_unlock_irqrestore(&base->lock, flags);
+
+        }
+		pr_info("func:%s End.\n",__func__);
+}
+
 #ifdef CONFIG_RTC_CLASS
 /**
  * alarmtimer_suspend - Suspend time callback
@@ -420,10 +448,6 @@ void alarm_init(struct alarm *alarm, enum alarmtimer_type type,
 	alarm->timer.function = alarmtimer_fired;
 	alarm->function = function;
 	alarm->type = type;
-	if (type >= ALARM_NUMTYPE) {
-		/* use ALARM_BOOTTIME as the default */
-		alarm->type = ALARM_BOOTTIME;
-	}
 	alarm->state = ALARMTIMER_STATE_INACTIVE;
 }
 EXPORT_SYMBOL_GPL(alarm_init);
