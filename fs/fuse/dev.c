@@ -1651,6 +1651,7 @@ static int fuse_retrieve(struct fuse_conn *fc, struct inode *inode,
 	req->in.h.nodeid = outarg->nodeid;
 	req->in.numargs = 2;
 	req->in.argpages = 1;
+	req->page_descs[0].offset = offset;
 	req->end = fuse_retrieve_end;
 
 	index = outarg->offset >> PAGE_CACHE_SHIFT;
@@ -1665,7 +1666,6 @@ static int fuse_retrieve(struct fuse_conn *fc, struct inode *inode,
 
 		this_num = min_t(unsigned, num, PAGE_CACHE_SIZE - offset);
 		req->pages[req->num_pages] = page;
-		req->page_descs[req->num_pages].offset = offset;
 		req->page_descs[req->num_pages].length = this_num;
 		req->num_pages++;
 
@@ -1873,10 +1873,8 @@ static ssize_t fuse_dev_do_write(struct fuse_conn *fc,
 
 	err = copy_out_args(cs, &req->out, nbytes);
 	if (req->in.h.opcode == FUSE_CANONICAL_PATH) {
-		char *path = (char *)req->out.args[0].value;
-
-		path[req->out.args[0].size - 1] = 0;
-		req->out.h.error = kern_path(path, 0, req->canonical_path);
+		req->out.h.error = kern_path((char *)req->out.args[0].value, 0,
+							req->canonical_path);
 	}
 	fuse_copy_finish(cs);
 
@@ -1985,13 +1983,10 @@ static ssize_t fuse_dev_splice_write(struct pipe_inode_info *pipe,
 
 	ret = fuse_dev_do_write(fc, &cs, len);
 
-	pipe_lock(pipe);
 	for (idx = 0; idx < nbuf; idx++) {
 		struct pipe_buffer *buf = &bufs[idx];
 		buf->ops->release(pipe, buf);
 	}
-	pipe_unlock(pipe);
-
 out:
 	kfree(bufs);
 	return ret;

@@ -1629,6 +1629,10 @@ static int snd_soc_instantiate_card(struct snd_soc_card *card)
 	struct snd_soc_codec *codec;
 	struct snd_soc_dai_link *dai_link;
 	int ret, i, order, dai_fmt;
+	/*@20150318,  add ACDB dir information to /proc/asound/acdbdir  START*/ 
+	struct device_node *np;
+	const char *str;
+	/*@20150318,  add ACDB dir information to /proc/asound/acdbdir  END*/
 
 	mutex_lock_nested(&card->mutex, SND_SOC_CARD_CLASS_INIT);
 
@@ -1801,6 +1805,16 @@ static int snd_soc_instantiate_card(struct snd_soc_card *card)
 		 "%s", card->long_name ? card->long_name : card->name);
 	snprintf(card->snd_card->driver, sizeof(card->snd_card->driver),
 		 "%s", card->driver_name ? card->driver_name : card->name);
+
+	/*@20150318,  add ACDB dir information to /proc/asound/acdbdir START*/ 
+	np = of_find_node_by_name(of_find_node_by_path("/"), "fih_info_management");
+	ret = of_property_read_string(np, "acdbdir", &str);
+	if (ret == 0)
+		snprintf(card->snd_card->acdbdir, sizeof(card->snd_card->acdbdir),  "%s", str);
+	else
+		snprintf(card->snd_card->acdbdir, sizeof(card->snd_card->acdbdir),  "UNKNOW");
+	/*@20150318,  add ACDB dir information to /proc/asound/acdbdir END*/ 
+
 	for (i = 0; i < ARRAY_SIZE(card->snd_card->driver); i++) {
 		switch (card->snd_card->driver[i]) {
 		case '_':
@@ -3822,11 +3836,7 @@ int snd_soc_register_card(struct snd_soc_card *card)
 	if (card->rtd == NULL)
 		return -ENOMEM;
 	card->num_rtd = 0;
-
-	if (card->num_aux_devs > 0)
-		card->rtd_aux = &card->rtd[card->num_links];
-	else
-		card->rtd_aux = NULL;
+	card->rtd_aux = &card->rtd[card->num_links];
 
 	for (i = 0; i < card->num_links; i++) {
 		card->rtd[i].card = card;

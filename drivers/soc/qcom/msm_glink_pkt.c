@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -29,7 +29,6 @@
 #include <asm/ioctls.h>
 #include <linux/mm.h>
 #include <linux/of.h>
-#include <linux/vmalloc.h>
 #include <linux/ipc_logging.h>
 #include <linux/termios.h>
 
@@ -67,9 +66,9 @@
 #define map_from_smd_trans_signal(sigs) \
 	do { \
 		if (sigs & SMD_DTR_SIG) \
-			sigs |= TIOCM_DSR; \
+			sigs |= TIOCM_DTR; \
 		if (sigs & SMD_CTS_SIG) \
-			sigs |= TIOCM_CTS; \
+			sigs |= TIOCM_RTS; \
 		if (sigs & SMD_CD_SIG) \
 			sigs |= TIOCM_CD; \
 		if (sigs & SMD_RI_SIG) \
@@ -399,8 +398,8 @@ void glink_pkt_notify_tx_done(void *handle, const void *priv,
 {
 	GLINK_PKT_INFO("%s(): priv[%p] pkt_priv[%p] ptr[%p]\n",
 					__func__, priv, pkt_priv, ptr);
-	/* Free Tx buffer allocated in glink_pkt_write */
-	kvfree(ptr);
+/* Free Tx buffer allocated in glink_pkt_write */
+	kfree(ptr);
 }
 
 /**
@@ -775,10 +774,8 @@ ssize_t glink_pkt_write(struct file *file,
 		__func__, devp->i, count);
 	data = kzalloc(count, GFP_KERNEL);
 	if (!data) {
-		if (!strcmp(devp->open_cfg.edge, "bg"))
-			data = vzalloc(count);
-		if (!data)
-			return -ENOMEM;
+		GLINK_PKT_ERR("%s buffer allocation failed\n", __func__);
+		return -ENOMEM;
 	}
 
 	ret = copy_from_user(data, buf, count);
@@ -786,14 +783,14 @@ ssize_t glink_pkt_write(struct file *file,
 		GLINK_PKT_ERR(
 		"%s copy_from_user failed ret[%d] on dev id:%d size %zu\n",
 		 __func__, ret, devp->i, count);
-		kvfree(data);
+		kfree(data);
 		return -EFAULT;
 	}
 
 	ret = glink_tx(devp->handle, data, data, count, GLINK_TX_REQ_INTENT);
 	if (ret) {
 		GLINK_PKT_ERR("%s glink_tx failed ret[%d]\n", __func__, ret);
-		kvfree(data);
+		kfree(data);
 		return ret;
 	}
 

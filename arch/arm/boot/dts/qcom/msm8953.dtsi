@@ -36,9 +36,18 @@
 					dev = "/dev/block/platform/soc/7824900.sdhci/by-name/vendor";
 					type = "ext4";
 					mnt_flags = "ro,barrier=1,discard";
-					fsmgr_flags = "wait,verify";
+					fsmgr_flags = "wait";
 					status = "ok";
 				};
+				system {
+					compatible = "android,system";
+					dev = "/dev/block/platform/soc/7824900.sdhci/by-name/system";
+					type = "ext4";
+					mnt_flags = "ro,barrier=1,discard";
+					fsmgr_flags = "wait";
+					status = "ok";
+				};
+
 			};
 		};
 	};
@@ -84,7 +93,7 @@
 			compatible = "shared-dma-pool";
 			reusable;
 			alignment = <0 0x400000>;
-			size = <0 0x0b400000>;
+			size = <0 0x09800000>;
 		};
 
 		qseecom_mem: qseecom_region@0 {
@@ -1214,9 +1223,9 @@
 			reg = <0x10 8>;
 		};
 
-		dload_type@1c {
+		dload_type@18 {
 			compatible = "qcom,msm-imem-dload-type";
-			reg = <0x1c 4>;
+			reg = <0x18 4>;
 		};
 
 		restart_reason@65c {

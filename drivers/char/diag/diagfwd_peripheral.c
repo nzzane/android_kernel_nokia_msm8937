@@ -730,12 +730,10 @@ static void __diag_fwd_open(struct diagfwd_info *fwd_info)
 	if (!fwd_info->inited)
 		return;
 
-	if (driver->logging_mode != DIAG_USB_MODE) {
-		if (fwd_info->buf_1)
-			atomic_set(&fwd_info->buf_1->in_busy, 0);
-		if (fwd_info->buf_2)
-			atomic_set(&fwd_info->buf_2->in_busy, 0);
-	}
+	if (fwd_info->buf_1)
+		atomic_set(&fwd_info->buf_1->in_busy, 0);
+	if (fwd_info->buf_2)
+		atomic_set(&fwd_info->buf_2->in_busy, 0);
 
 	if (fwd_info->p_ops && fwd_info->p_ops->open)
 		fwd_info->p_ops->open(fwd_info->ctxt);
@@ -943,6 +941,12 @@ void diagfwd_channel_read(struct diagfwd_info *fwd_info)
 		if (read_buf) {
 			temp_buf = fwd_info->buf_2;
 			atomic_set(&temp_buf->in_busy, 1);
+		}
+		if (read_buf) {
+			temp_buf = fwd_info->buf_2;
+			atomic_set(&temp_buf->in_busy, 1);
+	                DIAG_LOG(DIAG_DEBUG_PERIPHERALS,"diag:%s:%d:p=%d,t=%d : buf_2->in_busy= %d\n",
+                                __func__, __LINE__,fwd_info->peripheral, fwd_info->type, atomic_read(&(fwd_info->buf_2->in_busy)));
 		}
 	} else {
 		pr_debug("diag: In %s, both buffers are empty for p: %d, t: %d\n",

@@ -1070,7 +1070,7 @@ static void handle_session_init_done(enum hal_command_response cmd, void *data)
 
 static void handle_event_change(enum hal_command_response cmd, void *data)
 {
-	struct msm_vidc_inst *inst = NULL;
+	struct msm_vidc_inst *inst;
 	struct msm_vidc_cb_event *event_notify = data;
 	int event = V4L2_EVENT_SEQ_CHANGED_INSUFFICIENT;
 	struct v4l2_event seq_changed_event = {0};
@@ -2077,6 +2077,8 @@ static void handle_fbd(enum hal_command_response cmd, void *data)
 			vb->v4l2_buf.flags |= V4L2_QCOM_BUF_FLAG_READONLY;
 		if (fill_buf_done->flags1 & HAL_BUFFERFLAG_EOS)
 			vb->v4l2_buf.flags |= V4L2_QCOM_BUF_FLAG_EOS;
+		if (fill_buf_done->flags1 & HAL_BUFFERFLAG_ENDOFFRAME)
+			vb->v4l2_buf.flags |= V4L2_QCOM_BUF_FLAG_ENDOFFRAME;
 		if (fill_buf_done->flags1 & HAL_BUFFERFLAG_CODECCONFIG)
 			vb->v4l2_buf.flags &= ~V4L2_QCOM_BUF_FLAG_CODECCONFIG;
 		if (fill_buf_done->flags1 & HAL_BUFFERFLAG_SYNCFRAME)
@@ -3017,7 +3019,7 @@ static int set_output_buffers(struct msm_vidc_inst *inst,
 {
 	int rc = 0;
 	struct msm_smem *handle;
-	struct internal_buf *binfo;
+	struct internal_buf *binfo = NULL;
 	u32 smem_flags = 0, buffer_size;
 	struct hal_buffer_requirements *output_buf, *extradata_buf;
 	int i;
@@ -3123,10 +3125,10 @@ static int set_output_buffers(struct msm_vidc_inst *inst,
 	}
 	return rc;
 fail_set_buffers:
-	kfree(binfo);
-fail_kzalloc:
 	msm_comm_smem_free(inst, handle);
 err_no_mem:
+	kfree(binfo);
+fail_kzalloc:
 	return rc;
 }
 
@@ -3491,13 +3493,6 @@ int msm_vidc_comm_cmd(void *instance, union msm_v4l2_cmd *cmd)
 		u32 *ptr = NULL;
 		struct hal_buffer_requirements *output_buf;
 
-		if (inst->session_type != MSM_VIDC_DECODER) {
-			dprintk(VIDC_ERR,
-				"Session type is not MSM_VIDC_DECODER\n");
-			rc = -EINVAL;
-			break;
-		}
-
 		rc = msm_comm_try_get_bufreqs(inst);
 		if (rc) {
 			dprintk(VIDC_ERR,
@@ -3696,7 +3691,7 @@ static int request_seq_header(struct msm_vidc_inst *inst,
  */
 int msm_comm_qbuf(struct msm_vidc_inst *inst, struct vb2_buffer *vb)
 {
-	int rc = 0, capture_count, output_count;
+	int rc, capture_count, output_count;
 	struct msm_vidc_core *core;
 	struct hfi_device *hdev;
 	struct {

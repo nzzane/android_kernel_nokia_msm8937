@@ -367,9 +367,7 @@ static int f_midi_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 	/* allocate a bunch of read buffers and queue them all at once. */
 	for (i = 0; i < midi->qlen && err == 0; i++) {
 		struct usb_request *req =
-			midi_alloc_ep_req(midi->out_ep,
-				max_t(unsigned, midi->buflen,
-					bulk_out_desc.wMaxPacketSize));
+			midi_alloc_ep_req(midi->out_ep, midi->buflen);
 		if (req == NULL)
 			return -ENOMEM;
 
@@ -414,7 +412,6 @@ static void f_midi_unbind(struct usb_configuration *c, struct usb_function *f)
 	midi->card = NULL;
 	if (card)
 		snd_card_free_when_closed(card);
-
 	kfree(midi->id);
 	midi->id = NULL;
 
@@ -555,7 +552,7 @@ static void f_midi_transmit(struct f_midi *midi, struct usb_request *req)
 		req = midi_alloc_ep_req(ep, midi->buflen + extra_buf_alloc);
 
 	if (!req) {
-		ERROR(midi, "gmidi_transmit: midi_alloc_ep_request failed\n");
+		ERROR(midi, "gmidi_transmit: alloc_ep_request failed\n");
 		return;
 	}
 	req->length = 0;

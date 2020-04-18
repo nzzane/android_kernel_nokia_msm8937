@@ -31,7 +31,6 @@
 
 #include <asm/fpsimd.h>
 #include <asm/hw_breakpoint.h>
-#include <asm/pgtable-hwdef.h>
 #include <asm/ptrace.h>
 #include <asm/types.h>
 

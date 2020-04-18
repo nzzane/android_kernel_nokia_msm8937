@@ -17,10 +17,6 @@
  */
 
 #include <linux/atomic.h>
-
-
-#include <linux/device.h>
-
 #include <linux/err.h>
 #include <linux/file.h>
 #include <linux/freezer.h>
@@ -333,8 +329,7 @@ static void ion_handle_get(struct ion_handle *handle)
 }
 
 /* Must hold the client lock */
-
-static struct ion_handle* ion_handle_get_check_overflow(
+static struct ion_handle *ion_handle_get_check_overflow(
 					struct ion_handle *handle)
 {
 	if (atomic_read(&handle->ref.refcount) + 1 == 0)
@@ -345,7 +340,7 @@ static struct ion_handle* ion_handle_get_check_overflow(
 
 static int ion_handle_put_nolock(struct ion_handle *handle)
 {
-	int ret;
+	int ret = 0;
 
 	ret = kref_put(&handle->ref, ion_handle_destroy);
 

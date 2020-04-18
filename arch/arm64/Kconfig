@@ -64,7 +64,6 @@ config ARM64
 	select HAVE_FUNCTION_TRACER
 	select HAVE_FUNCTION_GRAPH_TRACER
 	select HAVE_GENERIC_DMA_COHERENT
-	select HAVE_HW_BREAKPOINT if PERF_EVENTS
 	select HAVE_IRQ_TIME_ACCOUNTING
 	select HAVE_MEMBLOCK
 	select HAVE_PATA_PLATFORM
@@ -82,6 +81,7 @@ config ARM64
 	select PERF_USE_VMALLOC
 	select POWER_RESET
 	select POWER_SUPPLY
+	select RTC_LIB
 	select SPARSE_IRQ
 	select SYSCTL_EXCEPTION_TRACE
 	select HAVE_CONTEXT_TRACKING
@@ -360,38 +360,6 @@ config ARCH_MSM8994_V1_TLBI_WA
 	  workaround is required for MSM8994 V1 revision where the
 	  [39:38] bits of VA are tied to zero and due to which TLBI
 	  operations with VA or ASID will not work.
-
-config MACH_XIAOMI
-	bool "Enable Support for Xiaomi Devices"
-	select ARCH_MSM
-	help
-	  This enables support for Xiaomi devices.
-
-config MACH_XIAOMI_MSM8937
-	bool "Enable Support for Xiaomi MSM8937 Devices"
-	select MACH_XIAOMI
-	select ARCH_MSM8937
-	help
-	  This enables support for Xiaomi MSM8937 devices.
-
-config MACH_XIAOMI_MSM8940
-	bool "Enable Support for Xiaomi MSM8940 Devices"
-	select MACH_XIAOMI
-	select ARCH_MSM8940
-	help
-	  This enables support for Xiaomi MSM8940 devices.
-
-config MACH_XIAOMI_LAND
-	bool "Enable Support for Xiaomi Redmi 3S/3X(land)"
-	select MACH_XIAOMI_MSM8937
-	help
-	  This enables support for Xiaomi Redmi 3S/3X(land).
-
-config MACH_XIAOMI_SANTONI
-	bool "Enable Support for Xiaomi Redmi 4/4X(santoni)"
-	select MACH_XIAOMI_MSM8940
-	help
-	  This enables support for Xiaomi Redmi 4/4X(santoni).
 
 endmenu
 
@@ -733,7 +701,9 @@ config ARCH_NR_GPIO
 
 source kernel/Kconfig.preempt
 
-source kernel/Kconfig.hz
+config HZ
+	int
+	default 100
 
 config ARCH_HAS_HOLES_MEMORYMODEL
 	def_bool y if SPARSEMEM
@@ -1109,10 +1079,6 @@ config COMPAT
 config SYSVIPC_COMPAT
 	def_bool y
 	depends on COMPAT && SYSVIPC
-
-config KEYS_COMPAT
-	def_bool y
-	depends on COMPAT && KEYS
 
 endmenu
 

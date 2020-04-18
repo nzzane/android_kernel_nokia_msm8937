@@ -2132,7 +2132,7 @@ static int e1000_request_msix(struct e1000_adapter *adapter)
 	if (strlen(netdev->name) < (IFNAMSIZ - 5))
 		snprintf(adapter->rx_ring->name,
 			 sizeof(adapter->rx_ring->name) - 1,
-			 "%.14s-rx-0", netdev->name);
+			 "%s-rx-0", netdev->name);
 	else
 		memcpy(adapter->rx_ring->name, netdev->name, IFNAMSIZ);
 	err = request_irq(adapter->msix_entries[vector].vector,
@@ -2148,7 +2148,7 @@ static int e1000_request_msix(struct e1000_adapter *adapter)
 	if (strlen(netdev->name) < (IFNAMSIZ - 5))
 		snprintf(adapter->tx_ring->name,
 			 sizeof(adapter->tx_ring->name) - 1,
-			 "%.14s-tx-0", netdev->name);
+			 "%s-tx-0", netdev->name);
 	else
 		memcpy(adapter->tx_ring->name, netdev->name, IFNAMSIZ);
 	err = request_irq(adapter->msix_entries[vector].vector,
@@ -4204,7 +4204,7 @@ static int e1000_sw_init(struct e1000_adapter *adapter)
 	/* Setup hardware time stamping cyclecounter */
 	if (adapter->flags & FLAG_HAS_HW_TIMESTAMP) {
 		adapter->cc.read = e1000e_cyclecounter_read;
-		adapter->cc.mask = CYCLECOUNTER_MASK(64);
+		adapter->cc.mask = CLOCKSOURCE_MASK(64);
 		adapter->cc.mult = 1;
 		/* cc.shift set in e1000e_get_base_tininca() */
 
