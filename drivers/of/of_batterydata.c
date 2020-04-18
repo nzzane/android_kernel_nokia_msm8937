@@ -382,7 +382,6 @@ struct device_node *of_batterydata_get_best_profile(
 					best_node = node;
 					best_delta = delta;
 					best_id_kohm = batt_ids.kohm[i];
-					printk("BBox::UPD;0::%d\n", best_id_kohm);
 				}
 			}
 		}
@@ -390,7 +389,6 @@ struct device_node *of_batterydata_get_best_profile(
 
 	if (best_node == NULL) {
 		pr_err("No battery data found\n");
-		printk("BBox::UEC;49::4\n");
 		return best_node;
 	}
 

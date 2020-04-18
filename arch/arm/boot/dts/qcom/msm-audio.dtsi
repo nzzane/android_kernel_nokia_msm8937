@@ -22,6 +22,13 @@
 		compatible = "qcom,msm-pcm-routing";
 	};
 
+	pcm2: qcom,msm-ultra-low-latency {
+		compatible = "qcom,msm-pcm-dsp";
+		qcom,msm-pcm-dsp-id = <2>;
+		qcom,msm-pcm-low-latency;
+		qcom,latency-level = "ultra";
+	};
+
 	pcm1: qcom,msm-pcm-low-latency {
 		compatible = "qcom,msm-pcm-dsp";
 		qcom,msm-pcm-dsp-id = <1>;
@@ -33,7 +40,7 @@
 		compatible = "qcom,msm-pcm-dsp";
 		qcom,msm-pcm-dsp-id = <2>;
 		qcom,msm-pcm-low-latency;
-		qcom,latency-level = "regular";
+		qcom,latency-level = "ultra";
 	};
 
 	cpe: qcom,msm-cpe-lsm {

@@ -298,29 +298,11 @@ ssize_t persistent_ram_ecc_string(struct persistent_ram_zone *prz,
 	return ret;
 }
 
-/*  for pstore { */
-static void *memcpy_pstore(void *dest, const void *src, size_t count)
-{
-  char *tmp = dest;
-  const char *s = src;
-
-  while (count--)
-          *tmp++ = *s++;
-  return dest;
-}
-/*  for pstore } */
-
 static void notrace persistent_ram_update(struct persistent_ram_zone *prz,
 	const void *s, unsigned int start, unsigned int count)
 {
 	struct persistent_ram_buffer *buffer = prz->buffer;
-  /*  for pstore { */
-  #if (0)
-    memcpy(buffer->data + start, s, count);
-  #else
-    memcpy_pstore(buffer->data + start, s, count);
-  #endif
-/*   for pstore } */
+	memcpy(buffer->data + start, s, count);
 	persistent_ram_update_ecc(prz, start, count);
 }
 
@@ -545,6 +527,11 @@ static int persistent_ram_post_init(struct persistent_ram_zone *prz, u32 sig,
 	sig ^= PERSISTENT_RAM_SIG;
 
 	if (prz->buffer->sig == sig) {
+		if (buffer_size(prz) == 0) {
+			pr_debug("found existing empty buffer\n");
+			return 0;
+		}
+
 		if (buffer_size(prz) > prz->buffer_size ||
 		    buffer_start(prz) > buffer_size(prz))
 			pr_info("found existing invalid buffer, size %zu, start %zu\n",

@@ -47,8 +47,4 @@ static inline void timerqueue_init_head(struct timerqueue_head *head)
 	head->head = RB_ROOT;
 	head->next = NULL;
 }
-
-//@20150529,  add FAO-12 Clear alarm Time Queue
-void alarmTimeQueueDelFtm(void);
-
 #endif /* _LINUX_TIMERQUEUE_H */

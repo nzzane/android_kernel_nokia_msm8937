@@ -1,1 +1,0 @@
-obj-$(CONFIG_ELAN_FINGERPRINT) += elan_fp.o

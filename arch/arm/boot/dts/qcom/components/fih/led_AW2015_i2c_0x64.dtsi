@@ -1,9 +1,0 @@
-/*
-   LED IC - AW2015
-
-*/
-
-AW2015@64{
-        reg = <0x64>;
-        compatible = "AW,AW2015_LED";
-};
